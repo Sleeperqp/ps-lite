@@ -16,7 +16,6 @@
 #include "ps/internal/message.h"
 namespace ps {
 class Resender;
-class PBMeta;
 /**
  * \brief Van sends messages to remote nodes
  *
@@ -110,11 +109,6 @@ class Van {
    * \brief pack meta into a string
    */
   void PackMeta(const Meta &meta, char **meta_buf, int *buf_size);
-
-  /**
-   * \brief pack meta into protobuf
-   */
-  void PackMetaPB(const Meta &meta, PBMeta *pb);
 
   /**
    * \brief unpack meta from a string

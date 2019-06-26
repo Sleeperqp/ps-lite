@@ -630,14 +630,14 @@ class RDMAVan : public Van {
     int remote_id = msg.meta.recver;
     CHECK_NE(remote_id, Meta::kEmpty);
 
-    PBMeta meta;
-    PackMetaPB(msg.meta, &meta);
+    char *meta_buf;
+    int meta_len;
+    PackMeta(msg.meta, &meta_buf, &meta_len);
 
     CHECK_NE(endpoints_.find(remote_id), endpoints_.end());
     Endpoint *endpoint = endpoints_[remote_id].get();
     MessageBuffer *msg_buf = new MessageBuffer();
 
-    size_t meta_len = meta.ByteSize();
     size_t data_len = msg.meta.data_size;
     size_t total_len = meta_len + data_len;
 
@@ -650,7 +650,7 @@ class RDMAVan : public Van {
     if (!msg.meta.control.empty()) {  // control message
       msg_buf->inline_len = total_len;
       msg_buf->inline_buf = mempool_->Alloc(total_len);
-      meta.SerializeToArray(msg_buf->inline_buf, meta_len);
+
       char *cur = msg_buf->inline_buf + meta_len;
       for (auto &sa : msg.data) {
         size_t seg_len = sa.size();
@@ -661,7 +661,7 @@ class RDMAVan : public Van {
       msg_buf->inline_len = meta_len;
       msg_buf->inline_buf = mempool_->Alloc(meta_len);
       msg_buf->data = msg.data;
-      meta.SerializeToArray(msg_buf->inline_buf, meta_len);
+      memcpy(msg_buf->inline_buf, meta_buf, meta_len);
 
       for (auto &sa : msg_buf->data) {
         if (sa.size() == 0) {
@@ -679,6 +679,8 @@ class RDMAVan : public Van {
         msg_buf->mrs.push_back({allocated_mr_[p], sa.size()});
       }
     }
+
+    delete meta_buf;
 
     // Take the second context buffer first to avoid deadlock
     WRContext *context = nullptr, *reserved = nullptr;
